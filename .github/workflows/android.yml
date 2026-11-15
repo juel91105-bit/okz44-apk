@@ -1,38 +1,61 @@
-name: Build OKZ44 APK
+name: OKZ44 Android APK Build
 
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'run: unzip -o OKZ44_GitHub_Build_Project.zip'
-      - '.github/workflows/android.yml'
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Show Project Files
+        run: |
+          echo "Repository files:"
+          ls -la
+          find . -maxdepth 3 -type f
+
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Extract project
+      - name: Find Android Project
         run: |
-          unzip -o OKZ44_Android_App_Project.zip
+          if [ -f "gradlew" ]; then
+            echo "Project found in root"
+          elif [ -d "OKZ44_Android_App_Project" ]; then
+            cd OKZ44_Android_App_Project
+            echo "Project found in folder"
+          else
+            echo "ERROR: Android project not found!"
+            exit 1
+          fi
 
       - name: Build APK
-        working-directory: OKZ44_Android_Project
         run: |
-          gradle --version
-          gradle assembleDebug
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          elif [ -f "OKZ44_Android_App_Project/gradlew" ]; then
+            cd OKZ44_Android_App_Project
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          else
+            echo "ERROR: gradlew not found!"
+            exit 1
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: OKZ44-APK
-          path: OKZ44_Android_Project/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            **/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
