@@ -14,48 +14,56 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Show Project Files
-        run: |
-          echo "Repository files:"
-          ls -la
-          find . -maxdepth 3 -type f
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      - name: Extract ZIP Project
+        run: |Run unzip -o OKZ44_Android_App_Project.zip
+unzip:  cannot find or open OKZ44_Android_App_Project.zip, OKZ44_Android_App_Project.zip.zip or OKZ44_Android_App_Project.zip.ZIP.
+Error: Process completed with exit
+          mkdir -p android-project
+          unzip -o OKZ44_GitHub_Build_Project.zip -d android-project
+          echo "ZIP extracted successfully"
+          find android-project -maxdepth 4 -type f
+
       - name: Find Android Project
         run: |
-          if [ -f "gradlew" ]; then
-            echo "Project found in root"
-          elif [ -d "OKZ44_Android_App_Project" ]; then
-            cd OKZ44_Android_App_Project
-            echo "Project found in folder"
-          else
-            echo "ERROR: Android project not found!"
+          PROJECT_DIR=$(find android-project -type f -name gradlew -exec dirname {} \; | head -n 1)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR=$(find android-project -type f \( -name settings.gradle -o -name settings.gradle.kts \) -exec dirname {} \; | head -n 1)
+          fi
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Android Gradle project not found in ZIP"
             exit 1
           fi
 
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+          echo "Project found: $PROJECT_DIR"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
       - name: Build APK
         run: |
-          if [ -f "gradlew" ]; then
-            chmod +x gradlew
-            ./gradlew assembleDebug
-          elif [ -f "OKZ44_Android_App_Project/gradlew" ]; then
-            cd OKZ44_Android_App_Project
+          cd "$PROJECT_DIR"
+
+          if [ -f gradlew ]; then
             chmod +x gradlew
             ./gradlew assembleDebug
           else
-            echo "ERROR: gradlew not found!"
-            exit 1
+            gradle assembleDebug
           fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: OKZ44-APK
-          path: |
-            **/build/outputs/apk/debug/*.apk
+          name: OKZ44-Android-APK
+          path: android-project/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
