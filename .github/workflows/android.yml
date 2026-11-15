@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'OKZ44_Android_App_Project.zip'
+      - 'OKZ44_GitHub_Build_Project.zip'
       - '.github/workflows/android.yml'
 
 jobs:
